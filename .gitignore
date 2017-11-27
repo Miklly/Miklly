@@ -2,3 +2,6 @@
 *.exe
 *.obj
 *.o
+*.db
+bin/*
+pkg/*
