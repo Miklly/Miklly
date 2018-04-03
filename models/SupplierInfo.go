@@ -3,11 +3,15 @@
 */
 package models
 
+import (
+	"github.com/jinzhu/gorm"
+)
+
 //供货商实体
 type SupplierInfo struct {
-	ID int
+	gorm.Model
 	//供货商名称
 	Name string
 	//备注
-	Description int
+	Description string
 }

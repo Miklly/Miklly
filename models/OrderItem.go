@@ -3,21 +3,25 @@
 */
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/jinzhu/gorm"
+)
 
 //订单项
 type OrderItem struct {
-	ID int
+	gorm.Model
 	//订单编号
-	OrderID int
+	OrderInfoID uint
 	//商品图片编号
-	ImageID int
+	ImageInfoID uint
+	ImageInfo   ImageInfo
 	//尺寸
 	Size string
 	//供货商编号
-	SupplierID int
-	//创建时间
-	CreateTime time.Time
+	SupplierInfoID uint
+	SupplierInfo   SupplierInfo
 	//拿货时间
 	GetTime time.Time
 	//是否发货

@@ -1,0 +1,38 @@
+/* Your app custom files in this file */
+.view-left {
+  float: left;
+  width: 320px;
+  border-right: 1px solid #b2b2b2;
+}
+.view-main {
+  width: -webkit-calc(100% - 321px);
+  width: -moz-calc(100% - 321px);
+  width: -ms-calc(100% - 321px);
+  width: calc(100% - 321px);
+}
+@media (max-width: 768px) {
+  .view-left {
+    width: 240px;
+  }
+  .view-main {
+    width: -webkit-calc(100% - 241px);
+    width: -moz-calc(100% - 241px);
+    width: -ms-calc(100% - 241px);
+    width: calc(100% - 241px);
+  }
+}
+#editOrder .inset{width:500px;float:left;}
+#editOrder .inset .item-title.label{width:100px;}
+#editOrder .card-small{width:250px;float:left;}
+#editOrder .card-small input{width:80px;}
+#addItemList .card-content{position:relative;}
+#addItemList .card-close{position:absolute;right:5px;top:5px;cursor:pointer;}
+#editOrder .submit{
+    height: 150px;
+    line-height: 150px;
+    font-weight: 900;
+    font-size: 72px;
+    width: 200px;
+    float:left;
+    margin:4px 5px;
+}

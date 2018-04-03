@@ -3,19 +3,24 @@
 */
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/jinzhu/gorm"
+)
 
 //供货商商品记录实体
 type SupplierRecord struct {
-	ID int
+	gorm.Model
 	//供货商微信编号
-	SupplierWXID int
+	SupplierWXID uint
+	SupplierWX   SupplierWX
 	//发布时间
 	Time time.Time
 	//文字标题
 	Title string
 	//图片编号列表
-	PicIDs string
-	//创建时间
-	CreateTime time.Time
+	Images []ImageInfo `gorm:"many2many:record_images;"`
 }
+
+//db.Model(&supplierRecord).Related(&images, "Images")

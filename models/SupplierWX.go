@@ -3,13 +3,18 @@
 */
 package models
 
+import (
+	"github.com/jinzhu/gorm"
+)
+
 //供货商微信
 type SupplierWX struct {
-	ID int
+	gorm.Model
 	//微信号
 	WXID string
 	//供货商编号
-	SupplierID int
+	SupplierInfoID uint
+	SupplierInfo   SupplierInfo
 	//备注
 	Description string
 }

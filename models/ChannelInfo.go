@@ -3,10 +3,13 @@
 */
 package models
 
+import "github.com/jinzhu/gorm"
+
 //销售渠道
 type ChannelInfo struct {
+	gorm.Model
 	//微信号
-	ID string
+	WXID string `gorm:"not null;unique"`
 	//销售渠道名称
-	Name string
+	Name string `gorm:"not null;unique"`
 }

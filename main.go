@@ -3,17 +3,18 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	//"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"reflect"
 	"strconv"
 	"time"
-	//"./config"
-	"./controller"
+
+	"github.com/miklly/miklly/config"
+	"github.com/miklly/miklly/controller"
 )
 
 func recordUpload(w http.ResponseWriter, r *http.Request) {
@@ -64,14 +65,38 @@ func taskHandler() {
 	}
 }
 
+func initController(w http.ResponseWriter, r *http.Request) {
+	var context controller.IController
+	urlPath := strings.SplitN(r.URL.Path, "/", 3)
+
+	switch strings.ToLower(urlPath[1]) {
+	case "api":
+		context = new(controller.ApiController)
+	case "", "web":
+		context = new(controller.WebController)
+	default:
+		c := new(controller.Controller)
+		c.Init(w, r)
+		c.Error(404, "页面未找到!!")
+		return
+	}
+
+	context.Init(w, r)
+}
+
 func main() {
 	time.Local, _ = time.LoadLocation("PRC")
 	//go taskHandler()
+	config.CheckDataBase()
 	//静态文件
-	//http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
-	http.HandleFunc("/api/sxjhelper/record-upload", recordUpload)
-	fmt.Println("启动web服务在端口：80")
-	err := http.ListenAndServe(":80", nil)
+	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./wwwroot/images"))))
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./wwwroot/css"))))
+	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("./wwwroot/fonts"))))
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./wwwroot/js"))))
+	//http.HandleFunc("/api/sxjhelper/record-upload", recordUpload)
+	http.HandleFunc("/", initController)
+	fmt.Println("启动web服务在端口：8080")
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatal("启动web服务失败：", err)
 	}

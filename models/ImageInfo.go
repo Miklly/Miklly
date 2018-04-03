@@ -3,15 +3,17 @@
 */
 package models
 
+import "github.com/jinzhu/gorm"
+
 //图片媒体实体
 type ImageInfo struct {
-	ID int
+	gorm.Model
 	//文件大小(字节)
 	Length uint
 	//文件md5值(32位)
-	MD5 string
+	MD5 string `gorm:"size:32"`
 	//文件sha1摘要值
-	SHA1 string
+	SHA1 string `gorm:"size:32"`
 	//文件存放路径
 	FilePath string
 	//缩略图存放路径
