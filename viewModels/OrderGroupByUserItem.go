@@ -1,7 +1,6 @@
 package viewModels
 
 import (
-	"github.com/jinzhu/gorm"
 	"github.com/miklly/miklly/models"
 )
 
@@ -27,18 +26,4 @@ func (this *OrderGroupByUserItem) FromModel(oi *models.OrderInfo) {
 	if !oi.SendTime.IsZero() {
 		this.SendTime = oi.SendTime.Format("2006-01-02")
 	}
-}
-
-//按渠道名分组获取用户订单
-func GetOrderGroupByUser(db *gorm.DB) map[string][]OrderGroupByUserItem {
-	var list []models.OrderInfo
-	db.Where("send_time is null").Find(&list)
-	result := make(map[string][]OrderGroupByUserItem)
-	for _, value := range list {
-		v := new(OrderGroupByUserItem)
-		v.FromModel(&value)
-		result[value.ChannelInfo.Name] = append(result[value.ChannelInfo.Name], *v)
-
-	}
-	return result
 }

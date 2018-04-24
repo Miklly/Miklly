@@ -2,76 +2,125 @@ package controller
 
 import (
 	"fmt"
-	"html/template"
-	"io/ioutil"
-	"net/http"
 	"strconv"
+	"strings"
 
-	"github.com/jinzhu/gorm"
-	"github.com/miklly/miklly/config"
 	"github.com/miklly/miklly/models"
-	"github.com/miklly/miklly/viewModels"
+	"github.com/miklly/miklly/service"
+	mvc "github.com/miklly/wemvc"
 )
 
 type WebController struct {
-	Controller
+	mvc.Controller
 }
 
-func (this *WebController) Init(w http.ResponseWriter, r *http.Request) {
-	this.Controller.Init(w, r)
-	this.Response.Header().Set("content-type", "text/html; charset=utf-8")
-	db, err := gorm.Open(config.DBType, config.DBFile)
-	config.CheckErr(err)
-	this.db = db
-	defer db.Close()
+func (this *WebController) OnInit(ctx *mvc.Context) {
+	this.Controller.OnInit(ctx)
+	this.Response().Header().Set("content-type", "text/html; charset=utf-8")
+}
+func (this WebController) Index() mvc.Result {
+	return this.File("./views/Index.html", "text/html")
+}
+func (this WebController) GroupByUser() mvc.Result {
+	this.ViewData["list"] = service.GetViewOrderByUser()
+	return this.View()
+}
+func (this WebController) GetAdd() mvc.Result {
 
-	switch fmt.Sprintf("%s%s", this.Request.Method, this.Action) {
-	case "GET", "GETindex":
-		this.GetIndex()
-	case "GETgroupbyuser":
-		this.GetGroupByUser()
-	case "GETadd":
-		this.GetAdd()
-	case "GETdetail":
-		this.GetDetail()
-	case "POSTedit":
-		this.PostEdit()
-	default:
-		this.Error(404, "页面未找到!!")
+	return this.ViewAction("Detail")
+}
+func (this WebController) GetDetail() mvc.Result {
+	id, _ := strconv.Atoi(this.RouteData()["key"])
+	this.ViewData["info"] = service.GetOrderByID(id)
+	return this.View()
+}
+func (this WebController) PostEdit() mvc.Result {
+	var entity models.OrderInfo
+	order := &models.OrderInfo{}
+	mvc.ModelParse(order, this.Request().Form)
+	var trimStr = func(r rune) bool {
+		ts := []rune(" ,.:，。：`_+=!~|")
+		for _, v := range ts {
+			if v == r {
+				return true
+			}
+		}
+		return false
 	}
-}
-func (this *WebController) GetIndex() {
-	//this.view("index", nil)
-	b, err := ioutil.ReadFile("./templates/Index.html")
-	config.CheckErr(err)
-	this.Response.Write(b)
-}
-func (this *WebController) GetGroupByUser() {
-	this.view("GroupByUser", viewModels.GetOrderGroupByUser(this.db))
-}
-func (this *WebController) GetAdd() {
-	this.view("Detail", nil)
-}
-func (this *WebController) GetDetail() {
-	var order models.OrderInfo
-	id, _ := strconv.ParseUint(this.Key, 10, 32)
-	this.db.First(&order, id)
-	this.view("Detail", order)
-}
-func (this *WebController) PostEdit() {
-
-}
-func (this *WebController) view(name string, data interface{}) {
-	t := template.New(fmt.Sprintf("%s.gohtml", name))
-
-	funcChannels := func() []models.ChannelInfo {
-		var list []models.ChannelInfo
-		this.db.Find(&list)
-		return list
+	strings.TrimFunc(order.Address, trimStr)
+	strings.TrimFunc(order.Name, trimStr)
+	strings.TrimFunc(order.Phone, trimStr)
+	if order.ID > 0 {
+		entity = service.GetNotSendOrderByID(int(order.ID))
+		if entity.ID < 1 {
+			return this.Error("未找到指定的订单!")
+		}
+	} else {
+		entity = service.GetNotSendOrderByUser(order.Name, order.Phone, order.Address)
 	}
-	t.Funcs(template.FuncMap{"channels": funcChannels})
 
-	file := fmt.Sprintf("templates/%s.gohtml", name)
-	t, _ = t.ParseFiles(file)
-	t.Execute(this.Response, data)
+	entity.Address = order.Address
+	entity.ChannelInfoID = order.ChannelInfoID
+	entity.ExpressCompany = order.ExpressCompany
+	entity.ExpressNumber = order.ExpressNumber
+	entity.Name = order.Name
+	entity.Phone = order.Phone
+	entity.SendTime = order.SendTime
+
+	//移除商品
+	newItem := []models.OrderItem{}
+	delImageIDs := this.Request().Form.Get("imageDelete")
+	for _, id := range strings.Split(delImageIDs, ",") {
+		uid, err := strconv.Atoi(id)
+		if err == nil && uid > 0 {
+			for _, item := range entity.Items {
+				if item.ImageInfoID != uint(uid) {
+					newItem = append(newItem, item)
+				}
+			}
+		}
+	}
+	if len(newItem) > 0 {
+		entity.Items = newItem
+	}
+
+	itemCount, err := strconv.Atoi(this.Request().Form.Get("itemCount"))
+	if err == nil {
+		var item models.OrderItem
+		for i := 0; i < itemCount; i++ {
+			strImage := this.Request().Form.Get(fmt.Sprintf("hidFile-%d", i))
+			if strImage == "" {
+				continue
+			}
+			imgID, err := strconv.Atoi(strImage)
+			if err == nil {
+				for _, val := range entity.Items {
+					if val.ImageInfoID == uint(imgID) {
+						item = val
+						break
+					}
+				}
+				if item.ID < 1 {
+					continue
+				}
+			} else {
+				img := service.UpdateImageByString(strImage)
+				item = models.OrderItem{
+					ImageInfoID: img.ID,
+					ImageInfo:   img,
+				}
+				entity.Items = append(entity.Items, item)
+			}
+			item.Size = this.Request().Form.Get(fmt.Sprintf("size-%d", i))
+			supplierName := this.Request().Form.Get(fmt.Sprintf("supplier-%d", i))
+			item.SupplierInfo = service.UpdateSupplierByName(supplierName)
+			item.SupplierInfoID = item.SupplierInfo.ID
+		}
+	}
+	service.SaveOrder(&entity)
+	return this.Redirect("/web/index")
+}
+func (this WebController) Error(msg string) mvc.Result {
+	this.ViewData["msg"] = msg
+	return this.View()
 }
