@@ -12,8 +12,8 @@ import (
 //订单项
 type OrderItem struct {
 	gorm.Model
-	//订单编号
-	OrderInfoID uint
+	//订单关联
+	OrderInfoID uint `gorm:"index"`
 	//商品图片编号
 	ImageInfoID uint
 	ImageInfo   ImageInfo
@@ -23,7 +23,12 @@ type OrderItem struct {
 	SupplierInfoID uint
 	SupplierInfo   SupplierInfo
 	//拿货时间
-	GetTime time.Time
+	GetTime *time.Time
 	//是否发货
 	IsSend bool
+}
+
+func (this *OrderItem) LoadAtt(db *gorm.DB) {
+	db.Model(this).Related(&this.ImageInfo)
+	db.Model(this).Related(&this.SupplierInfo)
 }

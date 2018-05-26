@@ -23,7 +23,7 @@ func (this *OrderGroupByUserItem) FromModel(oi *models.OrderInfo) {
 	this.Name = oi.Name
 	this.Number = oi.ExpressNumber
 	this.Phone = oi.Phone
-	if !oi.SendTime.IsZero() {
+	if oi.SendTime != nil && !oi.SendTime.IsZero() {
 		this.SendTime = oi.SendTime.Format("2006-01-02")
 	}
 }

@@ -1,0 +1,27 @@
+2018-04-27 22:00:13	URL:/web/edit	runtime error: invalid memory address or nil pointer dereference
+goroutine 94 [running]:
+runtime/debug.Stack(0x0, 0x0, 0x0)
+	/usr/local/go/src/runtime/debug/stack.go:24 +0xb1
+github.com/miklly/miklly/System/Log.(*Logger).AddErrMsg(0xc42008c060, 0xc42002e3c0, 0x4e, 0x0, 0x0)
+	/home/miklly/go/src/github.com/miklly/miklly/System/Log/Logger.go:158 +0x3f
+github.com/miklly/miklly/System/Web.(*HttpHandler).ServeHTTP.func1(0xc42029c300, 0x1045b08, 0xbc7cc0, 0xc420366000)
+	/home/miklly/go/src/github.com/miklly/miklly/System/Web/HttpHandler.go:24 +0x29b
+panic(0xaeb300, 0xfe6fa0)
+	/usr/local/go/src/runtime/panic.go:502 +0x24a
+github.com/miklly/miklly/service.UpdateImageByString(0xc420488a80, 0x61af, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/home/miklly/go/src/github.com/miklly/miklly/service/OrderService.go:217 +0xc70
+github.com/miklly/miklly/controller.(*WebController).Edit(0xc4201b4000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc420328060, ...)
+	/home/miklly/go/src/github.com/miklly/miklly/controller/webController.go:105 +0xbc4
+reflect.Value.call(0xb605c0, 0xc4201b4000, 0x1213, 0xb6d8ad, 0x4, 0xc420450140, 0x1, 0x1, 0x0, 0x0, ...)
+	/usr/local/go/src/reflect/value.go:447 +0xd24
+reflect.Value.Call(0xb605c0, 0xc4201b4000, 0x1213, 0xc420450140, 0x1, 0x1, 0x0, 0x0, 0x0)
+	/usr/local/go/src/reflect/value.go:308 +0xca
+github.com/miklly/miklly/System/Web.(*HttpHandler).ServeHTTP(0x1045b08, 0xbc7cc0, 0xc420366000, 0xc42029c300)
+	/home/miklly/go/src/github.com/miklly/miklly/System/Web/HttpHandler.go:107 +0xbfe
+net/http.serverHandler.ServeHTTP(0xc420306410, 0xbc7cc0, 0xc420366000, 0xc42029c300)
+	/usr/local/go/src/net/http/server.go:2694 +0x1e4
+net/http.(*conn).serve(0xc42027a820, 0xbc8040, 0xc420275c40)
+	/usr/local/go/src/net/http/server.go:1830 +0x11f2
+created by net/http.(*Server).Serve
+	/usr/local/go/src/net/http/server.go:2795 +0x6e4
+

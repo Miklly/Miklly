@@ -1,0 +1,37 @@
+﻿{{/*
+	list:map[string][]viewModels.OrderGroupByuserItem
+*/}}
+    <div data-page="group-by-item" class="page">
+        <div class="page-content">
+		{{if not .list}}
+			<div style="text-align:center;font-size:24px;margin-top:10px;">没有数据!</div>
+		{{end}}
+		{{range $k,$v:= .list}}
+			<div class="content-block-title">{{$k}}</div>
+            <div class="list-block media-list">
+                <ul>
+                {{range $v}}
+                    <li class="swipeout">
+                        <div class="swipeout-content">
+                            <a href="/web/detail/{{.ID}}" class="item-link item-content">
+                                <div class="item-inner">
+                                    <div class="item-title-row">
+                                        <div class="item-title">{{.Name}}</div>
+                                        <div class="item-after">待发:<span class="badge">{{.ItemCount}}</span></div>
+                                    </div>
+                                    <div class="item-subtitle">{{.Phone}}</div>
+                                    <div class="item-text">{{.Address}}</div>
+                                </div>
+                            </a>
+                            <div class="swipeout-actions-right">
+                                <!-- We add data-confirm and data-confirm-title attributes -->
+                                <a href="#" d-id="{{.ID}}" class="action1 bg-red" data-confirm="确定删除这条记录?" data-confirm-title="删除确认">删除</a>
+                            </div>
+                        </div>
+                    </li>
+                {{end}}
+                </ul>
+            </div>
+		{{end}}
+        </div>
+    </div>

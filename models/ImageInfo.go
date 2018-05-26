@@ -9,9 +9,9 @@ import "github.com/jinzhu/gorm"
 type ImageInfo struct {
 	gorm.Model
 	//文件大小(字节)
-	Length uint
+	Length uint `gorm:"unique_index:findImage"`
 	//文件md5值(32位)
-	MD5 string `gorm:"size:32"`
+	MD5 string `gorm:"size:32;unique_index:findImage"`
 	//文件sha1摘要值
 	SHA1 string `gorm:"size:32"`
 	//文件存放路径

@@ -6,79 +6,82 @@ import (
 	"strings"
 	"time"
 
+	mvc "github.com/miklly/miklly/System/Web"
 	"github.com/miklly/miklly/service"
-	mvc "github.com/miklly/wemvc"
 )
 
 type ApiController struct {
 	mvc.Controller
 }
-type resultStatus struct {
-	success   bool
-	message   string
-	historyID int
+type ResultStatus struct {
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	HistoryID int    `json:"historyID"`
+}
+
+func init() {
+	mvc.App.RegisterController(ApiController{})
 }
 
 //初始化控制器
-func (this *ApiController) OnInit(ctx *mvc.Context) {
-	this.Controller.OnInit(ctx)
-
-	h := this.Response().Header()
+func (this *ApiController) OnLoad() {
+	h := this.Response.Header()
 	//允许跨域访问
-	h.Add("Access-Control-Allow-Origin", "*")
-	h.Set("content-type", "text/json; charset=utf-8")
+	h.Set("Access-Control-Allow-Origin", "*")
 }
 
 //按用户分组获取订单列表
-func (this ApiController) GroupByUser() mvc.Result {
+func (this ApiController) GroupByUser() *mvc.JsonResult {
 	result := service.GetViewOrderByUser()
-	return this.JSON(result)
+	return this.Json(result)
 }
 
 //获取订单的商品分组
-func (this ApiController) GroupByItem() mvc.Result {
+func (this ApiController) GroupByItem() *mvc.JsonResult {
 	result := service.GetViewOrderByItem()
-	return this.JSON(result)
+	return this.Json(result)
 }
-func (this ApiController) OrderByID() mvc.Result {
-	id, _ := strconv.Atoi(this.RouteData()["key"])
+func (this ApiController) OrderByID() *mvc.JsonResult {
+	id, _ := strconv.Atoi(this.RouteData["id"].(string))
 	order := service.GetOrderByID(id)
-	return this.JSON(order)
+	return this.Json(order)
 }
-func (this ApiController) OrderByImage() mvc.Result {
-	id, _ := strconv.Atoi(this.RouteData()["key"])
+func (this ApiController) OrderByImage() *mvc.JsonResult {
+	id, _ := strconv.Atoi(this.RouteData["id"].(string))
 	result := service.GetViewOrderByImageID(id)
-	return this.JSON(result)
+	return this.Json(result)
 }
-func (this ApiController) DeleteOrder() mvc.Result {
-	var result resultStatus
-	id, _ := strconv.Atoi(this.RouteData()["key"])
-	result.success = service.DeleteOrderByID(id)
-	return this.JSON(result)
+func (this ApiController) DeleteOrder() *mvc.JsonResult {
+	var result ResultStatus
+	id, _ := strconv.Atoi(this.RouteData["id"].(string))
+	result.Success = service.DeleteOrderByID(id)
+	return this.Json(result)
 }
 
-func (this ApiController) PostSendOrder() mvc.Result {
-	form := this.Request().Form
-	id, _ := strconv.Atoi(this.RouteData()["key"])
-	imgIDs := form.Get("imgIDs")
-	send, _ := strconv.ParseBool(form.Get("send"))
-	number := form.Get("number")
-	result := resultStatus{
-		success:   true,
-		historyID: -1,
+func (this ApiController) SendOrder() *mvc.JsonResult {
+	form := this.Form
+	id, _ := strconv.Atoi(this.RouteData["id"].(string))
+	imgIDs := form.String("imgIDs")
+	send := form.Bool("send")
+	number := form.String("number")
+	t := time.Now()
+	result := ResultStatus{
+		Success:   true,
+		HistoryID: -1,
 	}
 	order := service.GetOrderByID(id)
 	if order.ID == 0 {
-		result.success = false
-		result.message = fmt.Sprintf("未找到相关订单(%d)!", id)
-		return this.JSON(result)
+		result.Success = false
+		result.Message = fmt.Sprintf("未找到相关订单(%d)!", id)
+		return this.Json(result)
 	}
 	if send {
-		order.SendTime = time.Now()
+		order.SendTime = &t
 		order.ExpressNumber = number
 	}
 	ids := strings.Split(imgIDs, ",")
-	for _, img := range order.Items {
+	for key, img := range order.Items {
+		item := &order.Items[key]
 		strImgID := strconv.Itoa(int(img.ImageInfoID))
 		for _, imgID := range ids {
 			if imgID == "" {
@@ -86,50 +89,50 @@ func (this ApiController) PostSendOrder() mvc.Result {
 			}
 			if strImgID == imgID {
 				if send {
-					img.IsSend = true
-				} else if img.GetTime.IsZero() {
-					img.GetTime = time.Now()
+					item.IsSend = true
+				} else if img.GetTime == nil || img.GetTime.IsZero() {
+					item.GetTime = &t
 				}
 				goto nextImg
 			}
 		}
 		if send {
-			img.IsSend = false
+			item.IsSend = false
 		} else {
-			img.GetTime = time.Time{}
+			item.GetTime = nil
 		}
 	nextImg:
 		continue
 	}
 	service.SaveOrder(&order)
-	result.historyID = int(order.ID)
-	return this.JSON(result)
+	result.HistoryID = int(order.ID)
+	return this.Json(result)
 }
-func (this ApiController) ChangeNumber() mvc.Result {
-	id, _ := strconv.Atoi(this.RouteData()["key"])
-	number := this.Request().Form.Get("number")
-	result := resultStatus{
-		success: true,
+func (this ApiController) ChangeNumber() *mvc.JsonResult {
+	id, _ := strconv.Atoi(this.RouteData["id"].(string))
+	number := this.Form.String("number")
+	result := ResultStatus{
+		Success: true,
 	}
 	order := service.GetOrderByID(id)
 
 	if order.ID == 0 {
-		result.success = false
-		result.message = fmt.Sprintf("未找到相关订单(%d)!", id)
+		result.Success = false
+		result.Message = fmt.Sprintf("未找到相关订单(%d)!", id)
 	}
 	if strings.Trim(number, " ") == "" {
-		result.success = false
-		result.message = "快递单号不能为空!"
+		result.Success = false
+		result.Message = "快递单号不能为空!"
 	}
-	if result.success {
+	if result.Success {
 		order.ExpressNumber = number
 		service.SaveOrder(&order)
 	}
-	return this.JSON(result)
+	return this.Json(result)
 }
-func (this ApiController) History() mvc.Result {
-	key := this.RouteData()["key"]
-	page, _ := strconv.Atoi(this.Request().Form.Get("page"))
+func (this ApiController) History() *mvc.JsonResult {
+	key := this.RouteData["id"].(string)
+	page := this.Form.Int("page")
 	result := service.GetViewOrderHistory(key, page, 10)
-	return this.JSON(result)
+	return this.Json(result)
 }

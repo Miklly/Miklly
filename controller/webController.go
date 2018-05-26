@@ -5,39 +5,35 @@ import (
 	"strconv"
 	"strings"
 
+	mvc "github.com/miklly/miklly/System/Web"
 	"github.com/miklly/miklly/models"
 	"github.com/miklly/miklly/service"
-	mvc "github.com/miklly/wemvc"
 )
 
 type WebController struct {
 	mvc.Controller
 }
 
-func (this *WebController) OnInit(ctx *mvc.Context) {
-	this.Controller.OnInit(ctx)
-	this.Response().Header().Set("content-type", "text/html; charset=utf-8")
+func init() {
+	mvc.App.RegisterController(WebController{})
 }
-func (this WebController) Index() mvc.Result {
-	return this.File("./views/Index.html", "text/html")
-}
-func (this WebController) GroupByUser() mvc.Result {
+
+func (this *WebController) GroupByUser() *mvc.ViewResult {
 	this.ViewData["list"] = service.GetViewOrderByUser()
 	return this.View()
 }
-func (this WebController) GetAdd() mvc.Result {
+func (this *WebController) Add() *mvc.ViewResult {
 
-	return this.ViewAction("Detail")
+	return this.Detail()
 }
-func (this WebController) GetDetail() mvc.Result {
-	id, _ := strconv.Atoi(this.RouteData()["key"])
+func (this *WebController) Detail() *mvc.ViewResult {
+	id, _ := strconv.Atoi(fmt.Sprintf("%v", this.RouteData["id"]))
 	this.ViewData["info"] = service.GetOrderByID(id)
-	return this.View()
+	this.ViewData["channels"] = service.GetChannels()
+	return this.View("Detail")
 }
-func (this WebController) PostEdit() mvc.Result {
+func (this *WebController) Edit(order models.OrderInfo) *mvc.ViewResult {
 	var entity models.OrderInfo
-	order := &models.OrderInfo{}
-	mvc.ModelParse(order, this.Request().Form)
 	var trimStr = func(r rune) bool {
 		ts := []rune(" ,.:，。：`_+=!~|")
 		for _, v := range ts {
@@ -47,9 +43,9 @@ func (this WebController) PostEdit() mvc.Result {
 		}
 		return false
 	}
-	strings.TrimFunc(order.Address, trimStr)
-	strings.TrimFunc(order.Name, trimStr)
-	strings.TrimFunc(order.Phone, trimStr)
+	order.Address = strings.TrimFunc(order.Address, trimStr)
+	order.Name = strings.TrimFunc(order.Name, trimStr)
+	order.Phone = strings.TrimFunc(order.Phone, trimStr)
 	if order.ID > 0 {
 		entity = service.GetNotSendOrderByID(int(order.ID))
 		if entity.ID < 1 {
@@ -68,59 +64,63 @@ func (this WebController) PostEdit() mvc.Result {
 	entity.SendTime = order.SendTime
 
 	//移除商品
-	newItem := []models.OrderItem{}
-	delImageIDs := this.Request().Form.Get("imageDelete")
-	for _, id := range strings.Split(delImageIDs, ",") {
-		uid, err := strconv.Atoi(id)
-		if err == nil && uid > 0 {
-			for _, item := range entity.Items {
-				if item.ImageInfoID != uint(uid) {
-					newItem = append(newItem, item)
+	delImageIDs := strings.Split(this.Form.String("imageDelete"), ",")
+	if len(delImageIDs) > 0 {
+		newItem := []models.OrderItem{}
+		for _, item := range entity.Items {
+			for _, id := range delImageIDs {
+				uid, err := strconv.Atoi(id)
+				if err == nil && item.ID == uint(uid) {
+					goto nextItem
 				}
 			}
+			newItem = append(newItem, item)
+		nextItem:
 		}
-	}
-	if len(newItem) > 0 {
 		entity.Items = newItem
 	}
 
-	itemCount, err := strconv.Atoi(this.Request().Form.Get("itemCount"))
+	itemCount, err := strconv.Atoi(this.Form.String("itemCount"))
+	//如果转换成功则继续
 	if err == nil {
-		var item models.OrderItem
-		for i := 0; i < itemCount; i++ {
-			strImage := this.Request().Form.Get(fmt.Sprintf("hidFile-%d", i))
+		var item *models.OrderItem
+		for i := 0; i <= itemCount; i++ {
+			item = nil
+			strImage := this.Form.String(fmt.Sprintf("hidFile-%d", i))
 			if strImage == "" {
 				continue
 			}
-			imgID, err := strconv.Atoi(strImage)
+			itemID, err := strconv.Atoi(strImage)
 			if err == nil {
-				for _, val := range entity.Items {
-					if val.ImageInfoID == uint(imgID) {
-						item = val
+				for index, val := range entity.Items {
+					if val.ID == uint(itemID) {
+						item = &entity.Items[index]
 						break
 					}
 				}
-				if item.ID < 1 {
+				if item == nil {
 					continue
 				}
 			} else {
 				img := service.UpdateImageByString(strImage)
-				item = models.OrderItem{
+				item = &models.OrderItem{
 					ImageInfoID: img.ID,
 					ImageInfo:   img,
 				}
-				entity.Items = append(entity.Items, item)
+				entity.Items = append(entity.Items, *item)
+				item = &entity.Items[len(entity.Items)-1]
 			}
-			item.Size = this.Request().Form.Get(fmt.Sprintf("size-%d", i))
-			supplierName := this.Request().Form.Get(fmt.Sprintf("supplier-%d", i))
+			item.Size = this.Form.String(fmt.Sprintf("size-%d", i))
+			supplierName := this.Form.String(fmt.Sprintf("supplier-%d", i))
 			item.SupplierInfo = service.UpdateSupplierByName(supplierName)
 			item.SupplierInfoID = item.SupplierInfo.ID
 		}
 	}
 	service.SaveOrder(&entity)
-	return this.Redirect("/web/index")
+	this.Redirect("/")
+	return nil
 }
-func (this WebController) Error(msg string) mvc.Result {
+func (this *WebController) Error(msg string) *mvc.ViewResult {
 	this.ViewData["msg"] = msg
 	return this.View()
 }

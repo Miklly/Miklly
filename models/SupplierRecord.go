@@ -23,4 +23,7 @@ type SupplierRecord struct {
 	Images []ImageInfo `gorm:"many2many:record_images;"`
 }
 
-//db.Model(&supplierRecord).Related(&images, "Images")
+func (this *SupplierRecord) LoadAtt(db *gorm.DB) {
+	db.Model(this).Related(&this.SupplierWX)
+	db.Model(this).Related(&this.Images)
+}

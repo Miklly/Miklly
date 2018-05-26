@@ -18,3 +18,7 @@ type SupplierWX struct {
 	//备注
 	Description string
 }
+
+func (this *SupplierWX) LoadAtt(db *gorm.DB) {
+	db.Model(this).Related(&this.SupplierInfo)
+}
