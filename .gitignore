@@ -5,3 +5,6 @@
 *.db
 bin/*
 pkg/*
+Log/*
+wwwroot/images/wx/*
+*.db

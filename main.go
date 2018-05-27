@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 	"runtime"
-	"runtime/debug"
+	//"runtime/debug"
 	"time"
 
 	. "github.com/miklly/miklly/System/Routing"
@@ -30,13 +30,14 @@ func init() {
 }
 func main() {
 	time.Local, _ = time.LoadLocation("PRC")
-	config.CheckDataBase()
+	//config.CheckDataBase()
 	//程序意外退时，记录错误日志
 	defer func() {
 		if e := recover(); e != nil {
 			err := e.(error)
-			mvc.App.Log.Add(err.Error() + "\r\n" + string(debug.Stack()))
+			//mvc.App.Log.Add(err.Error() + "\r\n" + string(debug.Stack()))
 			fmt.Println(err)
+			config.Log("未知错误!", err)
 		}
 	}()
 	//设置最大可同时执行的进程数

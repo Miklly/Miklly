@@ -32,7 +32,7 @@ type Task struct {
 }
 
 //创建一个任务管理器
-func NewTaskManager() *TaskManager {
+func newTaskManager() *TaskManager {
 	tm := &TaskManager{
 		curIndex:  0,
 		closed:    make(chan bool),
@@ -43,6 +43,14 @@ func NewTaskManager() *TaskManager {
 		tm.slots[i] = make(map[string]*Task)
 	}
 	return tm
+}
+func GetTaskManager() *TaskManager {
+	return &dm
+}
+
+//重置任务计时
+func (this *TaskManager) RestTask(key string) {
+
 }
 
 //启动任务服务
@@ -127,6 +135,12 @@ func (tm *TaskManager) AddTask(t time.Time, key string, exec TaskFunc, params ..
 }
 func (this *TaskManager) AddTaskByNow(second uint, key string, exec TaskFunc, params ...interface{}) error {
 	this.AddTask(time.Now().Add(time.Second*second), key, exec, params)
+}
+
+var dm TaskManager
+
+func init() {
+	dm = newTaskManager()
 }
 
 /*

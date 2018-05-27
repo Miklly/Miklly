@@ -7,6 +7,7 @@ import (
 	//"encoding/json"
 	"fmt"
 	//"io/ioutil"
+	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/miklly/miklly/models"
 )
 
 const DBType string = "sqlite3"
@@ -23,59 +23,25 @@ const ThumbnailWidth uint = 116
 const ThumbnailHeight uint = 144
 const ThumbnailScale float64 = float64(29) / 36
 
-func CheckErr(err error) {
+func HasErr(err error, msg string, data ...interface{}) bool {
 	if err != nil {
-		panic(err)
-	}
-}
-func HasDBErr(db *gorm.DB, msg string, data ...interface{}) bool {
-	if db.Error != nil {
-		Log(msg, data, db.Error)
+		Log(msg, data, err)
 		return true
 	}
 	return false
 }
+
+var dbErrFile, _ = os.Open("Log/DBErr.log")
+
 func OpenDataBase() *gorm.DB {
 	db, err := gorm.Open(DBType, DBFile)
-	CheckErr(err)
+	HasErr(err, "打开数据库失败!", DBType, DBFile)
 	//db.Set("gorm:auto_preload", true)
 	db.SingularTable(true)
+	db.LogMode(true)
+	//db.SetLogger(gorm.Logger{level.TRACE})
+	db.SetLogger(log.New(dbErrFile, "\r\n", 0))
 	return db
-}
-func CheckDataBase() {
-	db := OpenDataBase()
-	// 全局禁用表名复数
-	db.SingularTable(true)
-
-	//var order models.OrderInfo
-	//var record models.SupplierRecord
-	channels := []models.ChannelInfo{
-		models.ChannelInfo{WXID: "als1888", Name: "VIP"},
-		models.ChannelInfo{WXID: "ss16998", Name: "生活馆"},
-		models.ChannelInfo{WXID: "als2888", Name: "生活馆3"},
-		models.ChannelInfo{WXID: "abc28899", Name: "菲菲家"},
-		models.ChannelInfo{WXID: "as-shenghuo", Name: "爱尚生活"},
-		models.ChannelInfo{WXID: "yap0910", Name: "玩潮流"},
-	}
-	if !db.HasTable(&models.ChannelInfo{}) {
-		db.CreateTable(&models.ChannelInfo{})
-		for _, v := range channels {
-			db.Create(&v)
-		}
-	}
-	db.AutoMigrate(&models.ImageInfo{},
-		//&models.ChannelInfo{},
-		&models.ErrorLog{},
-		&models.ImageInfo{},
-		&models.OrderInfo{},
-		&models.OrderItem{},
-		&models.SupplierInfo{},
-		&models.SupplierRecord{},
-		&models.SupplierWX{},
-	)
-	//db.Model(&order).Related(&order.Items)
-	//db.Model(&record).Related(&record.Images, "image_info")
-	db.Close()
 }
 
 func StrAdd(arr ...string) string {

@@ -183,27 +183,31 @@ func SaveOrderByDB(db *gorm.DB, order *models.OrderInfo) {
 			newOrder.Items = notSendItems
 			order.Items = sendItems
 			tx.Create(newOrder)
-			if config.HasDBErr(tx, "创建OrderInfo记录失败!", newOrder) {
+			if config.HasErr(tx.Error, "创建OrderInfo记录失败!", newOrder) {
 				tx.Rollback()
 				return
 			}
 		}
 	}
+	tx.Save(order)
+	if config.HasErr(tx.Error, "保存更新OrderItem记录失败!", order) {
+		tx.Rollback()
+		return
+	}
+
 	//删除不在items中的商品项
 	ids := []uint{}
 	for _, v := range order.Items {
+		//fmt.Println(v.ID)
 		ids = append(ids, v.ID)
 	}
-	tx.Save(order)
-	if config.HasDBErr(tx, "保存更新OrderItem记录失败!", order) {
+	//tx.Where("order_info_id = ? and id not in(?)", order.ID, ids).Delete(models.OrderItem{})
+	tx.Delete(models.OrderItem{}, "order_info_id = ? and id not in(?)", order.ID, ids)
+	if config.HasErr(tx.Error, "删除已发货Item记录失败!", ids) {
 		tx.Rollback()
 		return
 	}
-	tx.Where("order_info_id = ? and id not in(?)", order.ID, ids).Delete(models.OrderItem{})
-	if config.HasDBErr(tx, "删除已发货Item记录失败!", ids) {
-		tx.Rollback()
-		return
-	}
+	tx.Commit()
 }
 
 //UpdateImageByString 根据图片的文本形式获取或插入图片

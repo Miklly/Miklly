@@ -72,7 +72,7 @@ myApp.onPageInit("edit-order",function(){
                             if (data.success)
                             {
                                 myApp.alert("删除成功!", "提示");
-                                mainView.router.loadPage("/home/GroupByUser");
+                                mainView.router.loadPage("/web/GroupByUser");
                             } else {
                                 myApp.alert("删除失败!", "提示");
                             }
