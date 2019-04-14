@@ -6,5 +6,7 @@
 bin/*
 pkg/*
 Log/*
+.vscode/*
 wwwroot/images/wx/*
 *.db
+miklly

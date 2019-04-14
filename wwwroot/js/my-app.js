@@ -84,6 +84,35 @@ myApp.onPageInit("edit-order",function(){
             ]
         });
     });
+	$$("#sndSubmit").click(function (e) {
+        var self = $$(this);
+		
+        myApp.modal({
+            title: "确认提示:",
+            text: "标记订单全部发货?",
+            buttons: [
+                {
+                    text: "发货",
+                    onClick: function () {
+                        //开始删除
+                        myApp.showPreloader("发货操作中...");
+                        $$.getJSON("/api/SendOrder/" + self.attr("d-id"), function (data) {
+                            myApp.hidePreloader();
+                            if (data.success)
+                            {
+                                myApp.alert("操作成功!", "提示");
+                                mainView.router.loadPage("/web/GroupByUser");
+                            } else {
+                                myApp.alert("操作失败!", "提示");
+                            }
+                        });
+                    }
+                }, {
+                    text: "取消"
+                }
+            ]
+        });
+    });
 });
 myApp.onPageInit("group-by-item", function () {
     $$('.action1').on('click', function () {

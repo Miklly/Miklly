@@ -24,13 +24,13 @@ func (this *OrderDetail) Init(info models.OrderInfo) {
 	this.Address = info.Address
 	this.Company = info.ExpressCompany
 	this.Number = info.ExpressNumber
-	if !info.SendTime.IsZero() {
+	if info.SendTime != nil && !info.SendTime.IsZero() {
 		this.SendTime = info.SendTime.Format("2006-01-02")
 	}
 	this.Images = make([]OrderDetailItem, len(info.Items))
 	for index, item := range info.Items {
 		this.Images[index] = OrderDetailItem{
-			IsGet:        !item.GetTime.IsZero(),
+			//IsGet:        !item.GetTime.IsZero(),
 			ImageID:      item.ImageInfoID,
 			Size:         item.Size,
 			Supplier:     item.SupplierInfo.Name,
@@ -38,6 +38,9 @@ func (this *OrderDetail) Init(info models.OrderInfo) {
 			Url:          item.ImageInfo.FilePath,
 			Thumb:        item.ImageInfo.ThumbnailPath,
 			DetailImages: []string{item.ImageInfo.FilePath},
+		}
+		if item.GetTime != nil && !item.GetTime.IsZero() {
+			this.Images[index].IsGet = true
 		}
 	}
 }

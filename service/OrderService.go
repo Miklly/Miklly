@@ -32,6 +32,11 @@ func GetOrderByID(id int) models.OrderInfo {
 	order.LoadAtt(db)
 	return order
 }
+func GetViewOrderByID(id int) viewModels.OrderDetail {
+	result := viewModels.OrderDetail{}
+	result.Init(GetOrderByID(id))
+	return result
+}
 func GetNotSendOrderByID(id int) models.OrderInfo {
 	db := config.OpenDataBase()
 	var order models.OrderInfo
@@ -52,17 +57,20 @@ func GetNotSendOrderByUser(name string, phone string, address string) models.Ord
 //GetViewOrderByImageID 根据商品图片获取订单信息
 func GetViewOrderByImageID(id int) []viewModels.OrderDetail {
 	var list []models.OrderInfo
-	result := make([]viewModels.OrderDetail, 0, 2)
+	var result []viewModels.OrderDetail
 	db := config.OpenDataBase()
+	defer db.Close()
 	WhereAllNotSend(db).Find(&list)
-	db.Close()
 	for _, info := range list {
 		info.LoadAtt(db)
+		//fmt.Println(info)
 		for _, item := range info.Items {
 			if item.ImageInfoID == uint(id) {
-				detail := &viewModels.OrderDetail{}
+				//fmt.Println(item.ImageInfoID)
+				detail := viewModels.OrderDetail{}
 				detail.Init(info)
-				result = append(result, *detail)
+				//fmt.Println(detail)
+				result = append(result, detail)
 				break
 			}
 		}
@@ -81,9 +89,10 @@ func GetViewOrderByItem() []viewModels.OrderGroupByItem {
 		value.LoadAtt(db)
 		for _, item := range value.Items {
 			var resultItem *viewModels.OrderGroupByItem
-			for _, i := range result {
-				if item.ImageInfoID == i.ImageID && item.SupplierInfo.Name == i.Supplier {
-					resultItem = &i
+			for i := 0; i < len(result); i++ {
+				ri := result[i]
+				if item.ImageInfoID == ri.ImageID && item.SupplierInfo.Name == ri.Supplier {
+					resultItem = &ri
 					goto hasImage
 				}
 			}
@@ -93,6 +102,7 @@ func GetViewOrderByItem() []viewModels.OrderGroupByItem {
 			resultItem.ImageID = item.ImageInfoID
 			resultItem.Supplier = item.SupplierInfo.Name
 			result = append(result, *resultItem)
+			resultItem = &result[len(result)-1]
 		hasImage:
 			resultItem.Count = resultItem.Count + 1
 		}
@@ -101,19 +111,35 @@ func GetViewOrderByItem() []viewModels.OrderGroupByItem {
 }
 
 //GetViewOrderByUser 按渠道名分组获取用户订单
-func GetViewOrderByUser() map[string][]viewModels.OrderGroupByUserItem {
+func GetViewOrderByUser() []viewModels.OrderGroupByUser {
 	db := config.OpenDataBase()
 	defer db.Close()
 	var list []models.OrderInfo
 	WhereAllNotSend(db).Find(&list)
-	result := make(map[string][]viewModels.OrderGroupByUserItem)
+	var result []viewModels.OrderGroupByUser
+	var wxGroup *viewModels.OrderGroupByUser
 	for _, value := range list {
 		value.LoadAtt(db)
 		v := new(viewModels.OrderGroupByUserItem)
 		v.FromModel(&value)
-		result[value.ChannelInfo.Name] = append(result[value.ChannelInfo.Name], *v)
-
+		getGroupUserByName := func(wxName string) *viewModels.OrderGroupByUser {
+			for i := 0; i < len(result); i++ {
+				if wxName == result[i].WX {
+					return &result[i]
+				}
+			}
+			user := viewModels.OrderGroupByUser{
+				WX: wxName,
+			}
+			result = append(result, user)
+			return &result[len(result)-1]
+		}
+		wxGroup = getGroupUserByName(value.ChannelInfo.Name)
+		//fmt.Println(v)
+		wxGroup.Users = append(wxGroup.Users, *v)
+		//fmt.Println(wxGroup.Users)
 	}
+	//fmt.Println(result)
 	return result
 }
 
@@ -123,8 +149,16 @@ func GetViewOrderHistory(key string, indexPage int, pageSize int) []viewModels.O
 	defer db.Close()
 	var list []models.OrderInfo
 	var result []viewModels.OrderGroupByUserItem
-	db.Where("address like ? or express_number like ? or name like ? or phone like ? ",
-		"%"+key+"%").Offset((indexPage - 1) * pageSize).Limit(pageSize).Find(&list)
+	if indexPage < 1 {
+		indexPage = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	strKey := "%" + key + "%"
+	db.Order("send_time desc").Where("send_time is not null and (address like ? or express_number like ? or name like ? or phone like ?) ",
+		strKey, strKey, strKey, strKey).Offset((indexPage - 1) * pageSize).Limit(pageSize).Find(&list)
+	//fmt.Println(list)
 	for _, value := range list {
 		value.LoadAtt(db)
 		v := new(viewModels.OrderGroupByUserItem)
@@ -179,10 +213,16 @@ func SaveOrderByDB(db *gorm.DB, order *models.OrderInfo) {
 				Name:           order.Name,
 				Phone:          order.Phone,
 			}
-			newOrder.ID = order.ID
-			newOrder.Items = notSendItems
+			//newOrder.ID = order.ID
+			//newOrder.Items = notSendItems
 			order.Items = sendItems
 			tx.Create(newOrder)
+			newOrder.Items = notSendItems
+			for i := 0; i < len(notSendItems); i++ {
+				newOrder.Items[i].OrderInfoID = newOrder.ID
+			}
+			//tx.Update(newOrder)
+			tx.Update(newOrder.Items)
 			if config.HasErr(tx.Error, "创建OrderInfo记录失败!", newOrder) {
 				tx.Rollback()
 				return
@@ -225,8 +265,8 @@ func UpdateImageByString(strImage string) models.ImageInfo {
 		result.MD5 = md5
 		db.Create(&result)
 		fileExtend := strImage[strings.Index(strImage, "/")+1 : strings.Index(strImage, ";")]
-		result.FilePath = fmt.Sprintf("images/wx/%d.%s", result.ID, fileExtend)
-		result.ThumbnailPath = fmt.Sprintf("images/wx/%d-thumbnail.%s", result.ID, fileExtend)
+		result.FilePath = fmt.Sprintf("/images/wx/%d.%s", result.ID, fileExtend)
+		result.ThumbnailPath = fmt.Sprintf("/images/wx/%d-thumbnail.%s", result.ID, fileExtend)
 
 		dir, _ := os.Getwd()
 		dir = StrAdd(dir, "/", Web.App.Configs.WebRoot)

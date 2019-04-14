@@ -66,6 +66,7 @@ func (this *WebApplication) Run() error {
 	go this.SessionGC()
 	handler := new(HttpHandler)
 	strPort := fmt.Sprintf(":%v", App.Configs.ListenPort)
+	fmt.Println("服务器已注册到", strPort)
 	err := http.ListenAndServe(strPort, handler)
 	return err
 }

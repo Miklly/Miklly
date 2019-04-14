@@ -2,9 +2,12 @@ package controller
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/miklly/miklly/viewModels"
 
 	mvc "github.com/miklly/miklly/System/Web"
 	"github.com/miklly/miklly/service"
@@ -23,6 +26,18 @@ func init() {
 	mvc.App.RegisterController(ApiController{})
 }
 
+//获取绝对URL地址
+func (this *ApiController) getFullUrl(strUrl string) string {
+	u, _ := url.Parse(strUrl)
+	r := this.Request
+	scheme := "http://"
+	if r.TLS != nil {
+		scheme = "https://"
+	}
+	requestURL, _ := url.Parse(strings.Join([]string{scheme, r.Host, r.RequestURI}, ""))
+	return requestURL.ResolveReference(u).String()
+}
+
 //初始化控制器
 func (this *ApiController) OnLoad() {
 	h := this.Response.Header()
@@ -39,16 +54,33 @@ func (this ApiController) GroupByUser() *mvc.JsonResult {
 //获取订单的商品分组
 func (this ApiController) GroupByItem() *mvc.JsonResult {
 	result := service.GetViewOrderByItem()
+	for i := 0; i < len(result); i++ {
+		result[i].Image = this.getFullUrl(result[i].Image)
+		result[i].ThumbnailImage = this.getFullUrl(result[i].ThumbnailImage)
+	}
 	return this.Json(result)
 }
 func (this ApiController) OrderByID() *mvc.JsonResult {
 	id, _ := strconv.Atoi(this.RouteData["id"].(string))
-	order := service.GetOrderByID(id)
+	order := service.GetViewOrderByID(id)
+	this.converImageInDetail(&order)
 	return this.Json(order)
+}
+func (this ApiController) converImageInDetail(item *viewModels.OrderDetail) {
+	for i := 0; i < len(item.Images); i++ {
+		img := item.Images[i]
+		item.Images[i].Thumb = this.getFullUrl(img.Thumb)
+		for n := 0; n < len(img.DetailImages); n++ {
+			item.Images[i].DetailImages[n] = this.getFullUrl(img.DetailImages[n])
+		}
+	}
 }
 func (this ApiController) OrderByImage() *mvc.JsonResult {
 	id, _ := strconv.Atoi(this.RouteData["id"].(string))
 	result := service.GetViewOrderByImageID(id)
+	for i := 0; i < len(result); i++ {
+		this.converImageInDetail(&result[i])
+	}
 	return this.Json(result)
 }
 func (this ApiController) DeleteOrder() *mvc.JsonResult {
@@ -59,11 +91,11 @@ func (this ApiController) DeleteOrder() *mvc.JsonResult {
 }
 
 func (this ApiController) SendOrder() *mvc.JsonResult {
-	form := this.Form
-	id, _ := strconv.Atoi(this.RouteData["id"].(string))
-	imgIDs := form.String("imgIDs")
-	send := form.Bool("send")
-	number := form.String("number")
+	form := this.Request.Form
+	id, _ := strconv.Atoi(form.Get("id"))
+	imgIDs := form.Get("imgIDs")
+	send := form.Get("send") == "true"
+	number := form.Get("number")
 	t := time.Now()
 	result := ResultStatus{
 		Success:   true,
@@ -132,7 +164,8 @@ func (this ApiController) ChangeNumber() *mvc.JsonResult {
 }
 func (this ApiController) History() *mvc.JsonResult {
 	key := this.RouteData["id"].(string)
-	page := this.Form.Int("page")
+	page := this.QueryString.Int("page")
+	//page := this.Form.Int("page")
 	result := service.GetViewOrderHistory(key, page, 10)
 	return this.Json(result)
 }
